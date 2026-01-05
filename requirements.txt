@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+geopy
+PyJWT
+bcrypt
+python-dotenv
+python-multipart
+redis
+alembic
+gunicorn
+pytest
+pytest-cov
+pytest-asyncio
+httpx

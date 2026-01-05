@@ -1,0 +1,326 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# Poetry
+poetry.lock
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# Environments
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# pytype
+.pytype/
+
+# Cython
+cython_debug/
+
+# IDEs
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+*.cover
+*.py,cover
+.cache
+nosetests.xml
+coverage.xml
+*.log
+test-results/
+junit.xml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfvars
+!terraform.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
+
+# AWS
+.aws/
+*.pem
+*.key
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+*.dockerignore
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.cache/
+
+# Project specific
+# Sensitive configuration files
+*.env
+.env.*
+!.env.example
+
+# Terraform variables (contain sensitive data)
+terraform/*.tfvars
+!terraform/*.tfvars.example
+
+# Local development
+local/
+.local/
+
+# Backup files
+*.backup
+*.old
+
+# Secrets
+secrets/
+*.secret
+*.key
+*.pem
+*.cert
+*.crt
+
+# Data files (if too large)
+# Uncomment if you don't want to commit large CSV files
+# data/*.csv
+# !data/*.csv.example
+
+# Alembic
+# Keep alembic versions, but ignore if you want
+# alembic/versions/*.pyc
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Profiling
+.prof
+
+# Application specific
+# Add any project-specific files here
+*.pid
+*.sock
+*.sock.*
+
+# Node (if using any Node.js tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# MacOS
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+!data/*.zip  # Keep data zip files if needed
+
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Package files
+*.dmg
+*.iso
+*.img
+
+# IDE - Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# IDE - Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# IDE - Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# IDE - Eclipse
+.project
+.classpath
+.settings/
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.recommenders
+
+# IDE - NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# IDE - Visual Studio Code
+.vscode/
+*.code-workspace
+.history/
+
+# Project specific ignores
+# Uncomment if you want to ignore specific project files
+# *.local
+# config/local.py
+
+# Keep example files
+!*.example
+!*.sample
+!.env.example
+!terraform.tfvars.example
+

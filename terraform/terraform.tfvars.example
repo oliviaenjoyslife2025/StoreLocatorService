@@ -1,0 +1,31 @@
+# Copy this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to version control!
+
+aws_region  = "us-east-1"
+environment = "production"
+project_name = "store-locator"
+
+# VPC Configuration
+create_vpc = false  # Set to true to create a new VPC, false to use default VPC
+
+# RDS PostgreSQL Configuration
+postgres_engine_version    = "15.4"
+postgres_instance_class   = "db.t3.micro"  # For production, use db.t3.small or larger
+postgres_allocated_storage = 20
+postgres_max_allocated_storage = 100
+postgres_db_name           = "storedb"
+postgres_username         = "postgres"
+postgres_password         = "CHANGE_THIS_PASSWORD"  # Use a strong password!
+
+# ElastiCache Redis Configuration
+redis_engine_version = "7.0"
+redis_node_type      = "cache.t3.micro"  # For production, use cache.t3.small or larger
+redis_num_cache_nodes = 1  # Use 2+ for high availability
+redis_auth_token      = "CHANGE_THIS_TOKEN"  # Use a strong token!
+
+# ECS Configuration
+ecs_cpu            = 512
+ecs_memory         = 1024
+ecs_desired_count  = 1
+app_secret_key     = "********"  # Use a strong secret key!
+
