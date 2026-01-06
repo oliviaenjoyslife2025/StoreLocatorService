@@ -12,6 +12,9 @@ This is a backend project for managing and searching retail store locations. It 
 - **Testing:** Pytest and Httpx
 
 ## API Endpoints
+<img width="1418" height="772" alt="image" src="https://github.com/user-attachments/assets/af94236d-cfb1-4cbc-b6aa-0df8fe874b0a" />
+
+<img width="1395" height="745" alt="image" src="https://github.com/user-attachments/assets/826fb2a6-74c6-4107-8652-2e9ab97408e6" />
 
 ### Health Check
 - `GET /`: Basic service health status.
