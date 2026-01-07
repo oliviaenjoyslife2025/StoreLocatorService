@@ -1,8 +1,31 @@
+import os
+import sys
 from sqlalchemy.orm import Session
-from database import SessionLocal
+from database import SessionLocal, redis_client
 from models import Store, Service, User, Role, Permission, StoreType, StoreStatus
 from auth import hash_password
 from init_db import init_roles_and_permissions
+from csv_import import process_csv_import
+
+def seed_csv_data(db: Session):
+    """Seed data from CSV files in the data directory."""
+    csv_files = ["data/stores_50.csv", "data/stores_1000.csv"]
+    
+    for file_path in csv_files:
+        if os.path.exists(file_path):
+            print(f"Importing {file_path}...")
+            with open(file_path, 'r', encoding='utf-8') as f:
+                csv_content = f.read()
+                try:
+                    report = process_csv_import(csv_content, db, redis_client)
+                    db.commit()
+                    print(f"  Successfully imported {file_path}:")
+                    print(f"    Total: {report.total_rows}, Created: {report.created}, Updated: {report.updated}, Failed: {report.failed}")
+                except Exception as e:
+                    db.rollback()
+                    print(f"  Error importing {file_path}: {str(e)}")
+        else:
+            print(f"  File not found: {file_path}")
 
 def seed_test_stores(db: Session, count: int = 20):
     """Seed test stores for testing."""
@@ -10,8 +33,13 @@ def seed_test_stores(db: Session, count: int = 20):
     base_lat, base_lon = 42.3601, -71.0589  # Boston coordinates
     
     for i in range(1, count + 1):
+        sid = f"S{i:04d}"
+        # Check if store already exists
+        if db.query(Store).filter(Store.store_id == sid).first():
+            continue
+            
         store = Store(
-            store_id=f"S{i:04d}",
+            store_id=sid,
             name=f"Test Store {i}",
             store_type=StoreType.regular if i % 2 == 0 else StoreType.flagship,
             status=StoreStatus.active if i % 10 != 0 else StoreStatus.inactive,
@@ -120,6 +148,7 @@ if __name__ == "__main__":
         seed_test_services(db)
         seed_test_users(db)
         seed_test_stores(db, count=20)
+        seed_csv_data(db)
         print("Test data seeding completed!")
     finally:
         db.close()

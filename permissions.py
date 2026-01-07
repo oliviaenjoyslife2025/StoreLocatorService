@@ -102,3 +102,13 @@ def require_admin_or_marketer(current_user: User = Depends(get_current_user), db
         )
     return current_user
 
+def require_viewer_or_above(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+    """Require admin, marketer, or viewer role."""
+    role = db.query(Role).filter(Role.role_id == current_user.role_id).first()
+    if not role or role.name not in ["admin", "marketer", "viewer"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Viewer, Marketer, or Admin role required."
+        )
+    return current_user
+

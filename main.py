@@ -24,7 +24,7 @@ from auth import (
     hash_password, verify_password, create_access_token, create_refresh_token,
     hash_token, verify_token_hash, get_current_user
 )
-from permissions import require_admin, require_admin_or_marketer
+from permissions import require_admin, require_admin_or_marketer, require_viewer_or_above
 from csv_import import process_csv_import
 from init_db import init_roles_and_permissions, create_default_admin
 from database import SessionLocal
@@ -46,8 +46,8 @@ def on_startup():
         db.close()
 
 @app.get("/", tags=["Health Check"])
-async def root():
-    return {"message": "Welcome to the Store Locator Service!"}
+async def root(current_user: User = Depends(require_viewer_or_above)):
+    return {"message": f"Welcome to the Store Locator Service, {current_user.email}!"}
 
 def is_store_open(store: Store) -> bool:
     """
@@ -82,6 +82,7 @@ def is_store_open(store: Store) -> bool:
 @app.post("/api/stores/search", response_model=SearchResultsResponse, tags=["Store Search"], dependencies=[Depends(rate_limit)])
 async def search_stores(
     request: SearchRequest,
+    current_user: User = Depends(require_viewer_or_above),
     db: Session = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis_client)
 ):
@@ -413,7 +414,7 @@ async def create_store(
 async def list_stores(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_viewer_or_above),
     db: Session = Depends(get_db)
 ):
     """List stores with pagination."""
@@ -442,7 +443,7 @@ async def list_stores(
 @app.get("/api/admin/stores/{store_id}", response_model=StoreResponse, tags=["Store Management"])
 async def get_store(
     store_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_viewer_or_above),
     db: Session = Depends(get_db)
 ):
     """Get store details by ID."""
