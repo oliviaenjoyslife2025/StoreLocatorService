@@ -1,8 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File, Request
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import datetime
 import json
+import re
+import jwt
 from collections import defaultdict
 import redis
 from datetime import timedelta
@@ -22,7 +25,7 @@ from rate_limiter import rate_limit
 from config import settings
 from auth import (
     hash_password, verify_password, create_access_token, create_refresh_token,
-    hash_token, verify_token_hash, get_current_user
+    hash_token, verify_token_hash, get_current_user, security, decode_access_token
 )
 from permissions import require_admin, require_admin_or_marketer, require_viewer_or_above
 from csv_import import process_csv_import
@@ -95,6 +98,19 @@ async def search_stores(
         print(f"Cache hit for search: {cache_key}")
         return SearchResultsResponse.model_validate_json(cached_response)
 
+    # Validate address zip code against postal_code if both provided
+    if request.location.address and request.location.postal_code:
+        # Extract 5-digit zip code from address using regex
+        zip_match = re.search(r"\b\d{5}\b", request.location.address)
+        if zip_match:
+            address_zip = zip_match.group(0)
+            # Compare with provided postal_code (only first 5 digits)
+            if address_zip != request.location.postal_code[:5]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Conflict detected: The zip code in address '{address_zip}' does not match the provided postal_code '{request.location.postal_code}'. Please re-enter."
+                )
+
     search_lat: Optional[float] = None
     search_lon: Optional[float] = None
 
@@ -138,10 +154,10 @@ async def search_stores(
         Store.status == StoreStatus.active
     )
 
-    # Apply service filter 
+    # Apply service filter (AND logic: store must have ALL requested services)
     if request.filters and request.filters.services:
         for service_name in request.filters.services:
-            query = query.join(Store.services).filter(Service.name == service_name)
+            query = query.filter(Store.services.any(Service.name == service_name))
 
     # Apply store_type filter: in_() is used to filter the query by a list of values
     if request.filters and request.filters.store_types:
@@ -257,9 +273,43 @@ async def login(
 @app.post("/api/auth/refresh", response_model=AccessTokenResponse, tags=["Authentication"])
 async def refresh_token(
     request: RefreshTokenRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis_client),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Refresh access token using refresh token."""
+    """Refresh access token and blacklist the old one."""
+    # 1. Blacklist the old Access Token (if provided)
+    old_access_token = credentials.credentials
+    if old_access_token:
+        try:
+            # We decode without verification just to get the 'exp' for blacklisting
+            # This ensures we can still refresh if the access token has already expired
+            payload = jwt.decode(
+                old_access_token, 
+                settings.SECRET_KEY, 
+                algorithms=[settings.ALGORITHM],
+                options={"verify_exp": False}
+            )
+            if payload.get("type") == "access":
+                exp = payload.get("exp")
+                if exp:
+                    now = datetime.datetime.utcnow().timestamp()
+                    remaining_time = int(exp - now)
+                    
+                    # Even if expired, blacklist it for at least 60 seconds as a buffer
+                    ttl = remaining_time if remaining_time > 0 else 60
+                    
+                    redis_client.setex(
+                        f"blacklist:{old_access_token}",
+                        ttl,
+                        "true"
+                    )
+                    print(f"DEBUG: Blacklisted old access token. Key: blacklist:{old_access_token[:20]}... TTL: {ttl}s")
+        except Exception as e:
+            print(f"DEBUG: Failed to blacklist old token: {e}")
+            pass
+
+    # 2. Proceed with Refresh Token validation
     # Find refresh token
     refresh_tokens = db.query(RefreshToken).filter(RefreshToken.revoked == False).all()
     
@@ -289,9 +339,9 @@ async def refresh_token(
                 "email": user.email,
                 "role": role.name if role else "viewer"
             }
-            access_token = create_access_token(access_token_data)
+            new_access_token = create_access_token(access_token_data)
             
-            return AccessTokenResponse(access_token=access_token)
+            return AccessTokenResponse(access_token=new_access_token)
     
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -302,16 +352,48 @@ async def refresh_token(
 async def logout(
     request: RefreshTokenRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis_client),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Revoke refresh token."""
-    refresh_tokens = db.query(RefreshToken).filter(
-        RefreshToken.user_id == current_user.user_id,
-        RefreshToken.revoked == False
+    """Revoke refresh token and blacklist access token."""
+    # 1. Blacklist the current Access Token
+    access_token = credentials.credentials
+    try:
+        # Using a non-verifying decode to ensure we get the 'exp' even if it's on the edge
+        payload = jwt.decode(
+            access_token, 
+            settings.SECRET_KEY, 
+            algorithms=[settings.ALGORITHM],
+            options={"verify_exp": False}
+        )
+        exp = payload.get("exp")
+        if exp:
+            now = datetime.datetime.utcnow().timestamp()
+            remaining_time = int(exp - now)
+            # Even if expired, blacklist it for 60 seconds
+            ttl = remaining_time if remaining_time > 0 else 60
+            redis_client.setex(
+                f"blacklist:{access_token}",
+                ttl,
+                "true"
+            )
+            print(f"DEBUG: Logout - Blacklisted access token. TTL: {ttl}s")
+    except Exception as e:
+        print(f"DEBUG: Logout - Blacklisting failed: {e}")
+        pass
+
+    # 2. Revoke Refresh Token
+    # Get all refresh tokens for the current user to find a match
+    all_tokens = db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.user_id
     ).all()
     
-    for token_obj in refresh_tokens:
+    for token_obj in all_tokens:
         if verify_token_hash(request.refresh_token, token_obj.token_hash):
+            if token_obj.revoked:
+                return {"message": "User is already logged out"}
+            
             token_obj.revoked = True
             db.commit()
             return {"message": "Logged out successfully"}
@@ -530,20 +612,30 @@ async def delete_store(
 # Batch CSV Import
 @app.post("/api/admin/stores/import", response_model=ImportReport, tags=["Store Management"])
 async def import_stores_csv(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(require_admin_or_marketer),
     db: Session = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis_client)
 ):
     """Import stores from CSV file."""
-    if not file.filename or not file.filename.endswith('.csv'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be a CSV file"
-        )
+    print(f"DEBUG: Headers received: {dict(request.headers)}")
+    print(f"DEBUG: Receiving file upload. Filename: '{file.filename}', Content-Type: '{file.content_type}'")
     
     content = await file.read()
-    csv_content = content.decode('utf-8')
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The uploaded file is empty. Please ensure you have selected a file in Postman."
+        )
+
+    try:
+        csv_content = content.decode('utf-8')
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File encoding error. Please ensure the file is UTF-8 encoded."
+        )
     
     try:
         report = process_csv_import(csv_content, db, redis_client)
@@ -570,9 +662,25 @@ async def create_user(
     db: Session = Depends(get_db)
 ):
     """Create a new user (Admin only)."""
-    # Check if email already exists
-    existing = db.query(User).filter(User.email == user_data.email).first()
-    if existing:
+    # 1. Validation for missing fields
+    if not user_data.user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing user id")
+    if not user_data.email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing email")
+    if not user_data.password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing password")
+
+    # 2. Check if user_id already exists
+    existing_id = db.query(User).filter(User.user_id == user_data.user_id).first()
+    if existing_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User id already exists"
+        )
+
+    # 3. Check if email already exists
+    existing_email = db.query(User).filter(User.email == user_data.email).first()
+    if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"User with email {user_data.email} already exists"

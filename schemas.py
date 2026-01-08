@@ -144,10 +144,10 @@ class UserStatusEnum(str, Enum):
     inactive = "inactive"
 
 class UserCreate(BaseModel):
-    user_id: str
-    email: str
-    password: str
-    role: UserRoleEnum
+    user_id: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    role: UserRoleEnum = UserRoleEnum.viewer
 
 class UserUpdate(BaseModel):
     role: Optional[UserRoleEnum] = None

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 测试所有API端点的脚本（使用curl）
+# Script to test all API endpoints using curl
 
 BASE_URL="http://localhost:8000"
 

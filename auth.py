@@ -3,12 +3,13 @@ from typing import Optional
 import jwt
 import bcrypt
 import secrets
+import redis
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from config import settings
-from database import get_db
+from database import get_db, get_redis_client
 from models import User, RefreshToken
 
 security = HTTPBearer()
@@ -71,10 +72,19 @@ def decode_access_token(token: str) -> dict:
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis_client)
 ) -> User:
     """Get the current authenticated user from the access token."""
     token = credentials.credentials
+    
+    # Check if token is blacklisted in Redis
+    if redis_client.get(f"blacklist:{token}"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked. Please log in again."
+        )
+        
     payload = decode_access_token(token)
     user_id: str = payload.get("user_id")
     

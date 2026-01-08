@@ -27,7 +27,7 @@ def print_warning(message):
 
 def test_endpoint(name: str, method: str, url: str, headers: Optional[dict] = None, 
                   data: Optional[dict] = None, expected_status: int = 200):
-    """测试单个端点"""
+    """Test a single endpoint"""
     try:
         with httpx.Client(timeout=30.0) as client:
             if method.upper() == "GET":
@@ -41,49 +41,49 @@ def test_endpoint(name: str, method: str, url: str, headers: Optional[dict] = No
             elif method.upper() == "DELETE":
                 response = client.delete(url, headers=headers)
             else:
-                print_error(f"不支持的HTTP方法: {method}")
+                print_error(f"Unsupported HTTP method: {method}")
                 return False, None
             
             if response.status_code == expected_status:
                 print_success(f"{name} - Status: {response.status_code}")
                 return True, response
             else:
-                print_error(f"{name} - 期望状态码 {expected_status}, 实际 {response.status_code}")
-                print_error(f"响应: {response.text[:200]}")
+                print_error(f"{name} - Expected status code {expected_status}, got {response.status_code}")
+                print_error(f"Response: {response.text[:200]}")
                 return False, response
     except Exception as e:
-        print_error(f"{name} - 错误: {str(e)}")
+        print_error(f"{name} - Error: {str(e)}")
         return False, None
 
 def main():
     print_info("=" * 60)
-    print_info("开始测试所有API端点")
+    print_info("Starting testing of all API endpoints")
     print_info("=" * 60)
     print()
     
-    # 存储token
+    # Store tokens
     access_token = None
     refresh_token = None
     admin_token = None
     
     # ============================================================================
-    # 1. 公共端点（无需认证）
+    # 1. Public Endpoints (No authentication required)
     # ============================================================================
-    print_info("\n【1. 公共端点测试】")
+    print_info("\n【1. Public Endpoint Testing】")
     print("-" * 60)
     
-    # 健康检查
+    # Health check
     success, response = test_endpoint(
-        "GET / - 健康检查",
+        "GET / - Health Check",
         "GET",
         f"{BASE_URL}/"
     )
     
-    # 搜索 - 按坐标
+    # Search - By coordinates
     print()
-    print_info("测试搜索功能...")
+    print_info("Testing search functionality...")
     success, response = test_endpoint(
-        "POST /api/stores/search - 按坐标搜索",
+        "POST /api/stores/search - Search by coordinates",
         "POST",
         f"{BASE_URL}/api/stores/search",
         data={
@@ -98,16 +98,16 @@ def main():
     )
     
     # ============================================================================
-    # 2. 认证端点
+    # 2. Authentication Endpoints
     # ============================================================================
-    print_info("\n【2. 认证端点测试】")
+    print_info("\n【2. Authentication Endpoint Testing】")
     print("-" * 60)
     
-    # 登录 - Admin
+    # Login - Admin
     print()
-    print_info("测试Admin登录...")
+    print_info("Testing Admin login...")
     success, response = test_endpoint(
-        "POST /api/auth/login - Admin登录",
+        "POST /api/auth/login - Admin login",
         "POST",
         f"{BASE_URL}/api/auth/login",
         data={
@@ -122,18 +122,18 @@ def main():
             tokens = response.json()
             access_token = tokens.get("access_token")
             refresh_token = tokens.get("refresh_token")
-            print_success(f"获取到 access_token: {access_token[:20]}...")
-            print_success(f"获取到 refresh_token: {refresh_token[:20]}...")
+            print_success(f"Got access_token: {access_token[:20]}...")
+            print_success(f"Got refresh_token: {refresh_token[:20]}...")
             admin_token = access_token
         except:
-            print_error("无法解析登录响应")
+            print_error("Could not parse login response")
     
-    # 刷新token
+    # Refresh token
     if refresh_token:
         print()
-        print_info("测试token刷新...")
+        print_info("Testing token refresh...")
         success, response = test_endpoint(
-            "POST /api/auth/refresh - 刷新token",
+            "POST /api/auth/refresh - Refresh token",
             "POST",
             f"{BASE_URL}/api/auth/refresh",
             data={
@@ -145,35 +145,35 @@ def main():
             try:
                 new_tokens = response.json()
                 new_access_token = new_tokens.get("access_token")
-                print_success(f"获取到新的 access_token: {new_access_token[:20]}...")
-                access_token = new_access_token  # 使用新token
+                print_success(f"Got new access_token: {new_access_token[:20]}...")
+                access_token = new_access_token  # Use new token
             except:
-                print_warning("无法解析刷新响应")
+                print_warning("Could not parse refresh response")
     
     # ============================================================================
-    # 3. 商店管理端点（需要认证）
+    # 3. Store Management Endpoints (Authentication required)
     # ============================================================================
     if not admin_token:
-        print_error("\n无法获取认证token，跳过需要认证的测试")
+        print_error("\nCould not get auth token, skipping authenticated tests")
         return
     
     headers = {"Authorization": f"Bearer {admin_token}"}
     
-    print_info("\n【3. 商店管理端点测试】")
+    print_info("\n【3. Store Management Endpoint Testing】")
     print("-" * 60)
     
-    # 创建商店
+    # Create store
     print()
-    print_info("测试创建商店...")
+    print_info("Testing store creation...")
     test_store_id = "S9999"
     success, response = test_endpoint(
-        "POST /api/admin/stores - 创建商店",
+        "POST /api/admin/stores - Create store",
         "POST",
         f"{BASE_URL}/api/admin/stores",
         headers=headers,
         data={
             "store_id": test_store_id,
-            "name": "测试商店",
+            "name": "Test Store",
             "store_type": "regular",
             "status": "active",
             "latitude": 42.3601,
@@ -196,46 +196,46 @@ def main():
         expected_status=200
     )
     
-    # 列出商店
+    # List stores
     print()
-    print_info("测试列出商店...")
+    print_info("Testing list stores...")
     success, response = test_endpoint(
-        "GET /api/admin/stores - 列出商店（分页）",
+        "GET /api/admin/stores - List stores (paginated)",
         "GET",
         f"{BASE_URL}/api/admin/stores?page=1&page_size=10",
         headers=headers
     )
     
-    # 获取商店详情
+    # Get store details
     print()
-    print_info("测试获取商店详情...")
+    print_info("Testing get store details...")
     success, response = test_endpoint(
-        f"GET /api/admin/stores/{test_store_id} - 获取商店详情",
+        f"GET /api/admin/stores/{test_store_id} - Get store details",
         "GET",
         f"{BASE_URL}/api/admin/stores/{test_store_id}",
         headers=headers
     )
     
-    # 更新商店
+    # Update store
     print()
-    print_info("测试更新商店...")
+    print_info("Testing update store...")
     success, response = test_endpoint(
-        f"PATCH /api/admin/stores/{test_store_id} - 部分更新商店",
+        f"PATCH /api/admin/stores/{test_store_id} - Partially update store",
         "PATCH",
         f"{BASE_URL}/api/admin/stores/{test_store_id}",
         headers=headers,
         data={
-            "name": "更新后的测试商店",
+            "name": "Updated Test Store",
             "phone": "617-555-8888"
         },
         expected_status=200
     )
     
-    # 搜索商店（公共端点，但测试一下）
+    # Search stores (Public endpoint, but testing it anyway)
     print()
-    print_info("测试搜索商店（公共端点）...")
+    print_info("Testing search stores (Public endpoint)...")
     success, response = test_endpoint(
-        "POST /api/stores/search - 搜索商店（带服务过滤）",
+        "POST /api/stores/search - Search stores (with service filter)",
         "POST",
         f"{BASE_URL}/api/stores/search",
         data={
@@ -252,15 +252,15 @@ def main():
     )
     
     # ============================================================================
-    # 4. CSV导入测试
+    # 4. CSV Import Testing
     # ============================================================================
-    print_info("\n【4. CSV导入测试】")
+    print_info("\n【4. CSV Import Testing】")
     print("-" * 60)
     
     print()
-    print_info("测试CSV导入...")
+    print_info("Testing CSV import...")
     csv_content = """store_id,name,store_type,status,latitude,longitude,address_street,address_city,address_state,address_postal_code,address_country,phone,services,hours_mon,hours_tue,hours_wed,hours_thu,hours_fri,hours_sat,hours_sun
-S8888,CSV导入测试商店,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA,02101,USA,617-555-7777,pharmacy|pickup,08:00-22:00,08:00-22:00,08:00-22:00,08:00-22:00,08:00-22:00,09:00-21:00,10:00-20:00"""
+S8888,CSV Import Test Store,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA,02101,USA,617-555-7777,pharmacy|pickup,08:00-22:00,08:00-22:00,08:00-22:00,08:00-22:00,08:00-22:00,09:00-21:00,10:00-20:00"""
     
     try:
         files = {'file': ('test.csv', csv_content.encode(), 'text/csv')}
@@ -271,37 +271,37 @@ S8888,CSV导入测试商店,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA
                 files=files
             )
         if response.status_code == 200:
-            print_success(f"POST /api/admin/stores/import - CSV导入 - Status: {response.status_code}")
+            print_success(f"POST /api/admin/stores/import - CSV Import - Status: {response.status_code}")
             result = response.json()
-            print_info(f"  导入结果: 总计 {result.get('total_rows')}, 创建 {result.get('created')}, 更新 {result.get('updated')}, 失败 {result.get('failed')}")
+            print_info(f"  Import results: Total {result.get('total_rows')}, Created {result.get('created')}, Updated {result.get('updated')}, Failed {result.get('failed')}")
         else:
-            print_error(f"POST /api/admin/stores/import - 期望状态码 200, 实际 {response.status_code}")
-            print_error(f"响应: {response.text[:200]}")
+            print_error(f"POST /api/admin/stores/import - Expected status code 200, got {response.status_code}")
+            print_error(f"Response: {response.text[:200]}")
     except Exception as e:
-        print_error(f"CSV导入测试 - 错误: {str(e)}")
+        print_error(f"CSV Import Testing - Error: {str(e)}")
     
     # ============================================================================
-    # 5. 用户管理端点（Admin only）
+    # 5. User Management Endpoints (Admin only)
     # ============================================================================
-    print_info("\n【5. 用户管理端点测试】")
+    print_info("\n【5. User Management Endpoint Testing】")
     print("-" * 60)
     
-    # 列出用户
+    # List users
     print()
-    print_info("测试列出用户...")
+    print_info("Testing list users...")
     success, response = test_endpoint(
-        "GET /api/admin/users - 列出所有用户",
+        "GET /api/admin/users - List all users",
         "GET",
         f"{BASE_URL}/api/admin/users",
         headers=headers
     )
     
-    # 创建用户
+    # Create user
     print()
-    print_info("测试创建用户...")
+    print_info("Testing create user...")
     test_user_id = "U9999"
     success, response = test_endpoint(
-        "POST /api/admin/users - 创建用户",
+        "POST /api/admin/users - Create user",
         "POST",
         f"{BASE_URL}/api/admin/users",
         headers=headers,
@@ -314,12 +314,12 @@ S8888,CSV导入测试商店,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA
         expected_status=200
     )
     
-    # 更新用户
+    # Update user
     if success:
         print()
-        print_info("测试更新用户...")
+        print_info("Testing update user...")
         success, response = test_endpoint(
-            f"PUT /api/admin/users/{test_user_id} - 更新用户",
+            f"PUT /api/admin/users/{test_user_id} - Update user",
             "PUT",
             f"{BASE_URL}/api/admin/users/{test_user_id}",
             headers=headers,
@@ -331,16 +331,16 @@ S8888,CSV导入测试商店,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA
         )
     
     # ============================================================================
-    # 6. 权限测试（测试不同角色的访问权限）
+    # 6. Permissions Testing (Testing different roles' access)
     # ============================================================================
-    print_info("\n【6. 权限测试】")
+    print_info("\n【6. Permissions Testing】")
     print("-" * 60)
     
-    # 测试Viewer角色（应该不能创建商店）
+    # Test Viewer role (should not be able to create store)
     print()
-    print_info("测试Viewer角色权限（应该不能创建商店）...")
+    print_info("Testing Viewer role permissions (should not be able to create store)...")
     success, viewer_response = test_endpoint(
-        "POST /api/auth/login - Viewer登录",
+        "POST /api/auth/login - Viewer login",
         "POST",
         f"{BASE_URL}/api/auth/login",
         data={
@@ -356,17 +356,17 @@ S8888,CSV导入测试商店,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA
             viewer_token = viewer_tokens.get("access_token")
             viewer_headers = {"Authorization": f"Bearer {viewer_token}"}
             
-            # Viewer应该不能创建商店
+            # Viewer should not be able to create store
             print()
-            print_info("测试Viewer尝试创建商店（应该失败）...")
+            print_info("Testing Viewer trying to create store (should fail)...")
             success, response = test_endpoint(
-                "POST /api/admin/stores - Viewer创建商店（应该被拒绝）",
+                "POST /api/admin/stores - Viewer creating store (should be denied)",
                 "POST",
                 f"{BASE_URL}/api/admin/stores",
                 headers=viewer_headers,
                 data={
                     "store_id": "S9998",
-                    "name": "Viewer测试商店",
+                    "name": "Viewer Test Store",
                     "store_type": "regular",
                     "status": "active",
                     "latitude": 42.3601,
@@ -386,35 +386,35 @@ S8888,CSV导入测试商店,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA
                     "hours_sat": "09:00-21:00",
                     "hours_sun": "10:00-20:00"
                 },
-                expected_status=403  # 应该返回403 Forbidden
+                expected_status=403  # Should return 403 Forbidden
             )
             if response and response.status_code == 403:
-                print_success("权限控制正常工作：Viewer无法创建商店")
+                print_success("Permission control working: Viewer cannot create store")
         except:
-            print_warning("无法测试Viewer权限")
+            print_warning("Could not test Viewer permissions")
     
     # ============================================================================
-    # 7. 清理测试数据
+    # 7. Cleanup Test Data
     # ============================================================================
-    print_info("\n【7. 清理测试数据】")
+    print_info("\n【7. Cleanup Test Data】")
     print("-" * 60)
     
-    # 删除测试商店
+    # Delete test store
     print()
-    print_info("删除测试商店...")
+    print_info("Deleting test store...")
     success, response = test_endpoint(
-        f"DELETE /api/admin/stores/{test_store_id} - 删除（停用）商店",
+        f"DELETE /api/admin/stores/{test_store_id} - Delete (deactivate) store",
         "DELETE",
         f"{BASE_URL}/api/admin/stores/{test_store_id}",
         headers=headers,
         expected_status=200
     )
     
-    # 删除测试用户
+    # Delete test user
     print()
-    print_info("删除测试用户...")
+    print_info("Deleting test user...")
     success, response = test_endpoint(
-        f"DELETE /api/admin/users/{test_user_id} - 删除（停用）用户",
+        f"DELETE /api/admin/users/{test_user_id} - Delete (deactivate) user",
         "DELETE",
         f"{BASE_URL}/api/admin/users/{test_user_id}",
         headers=headers,
@@ -422,16 +422,16 @@ S8888,CSV导入测试商店,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA
     )
     
     # ============================================================================
-    # 8. 注销
+    # 8. Logout
     # ============================================================================
-    print_info("\n【8. 注销测试】")
+    print_info("\n【8. Logout Testing】")
     print("-" * 60)
     
     if refresh_token:
         print()
-        print_info("测试注销...")
+        print_info("Testing logout...")
         success, response = test_endpoint(
-            "POST /api/auth/logout - 注销",
+            "POST /api/auth/logout - Logout",
             "POST",
             f"{BASE_URL}/api/auth/logout",
             headers=headers,
@@ -442,22 +442,22 @@ S8888,CSV导入测试商店,regular,active,42.3601,-71.0589,456 CSV St,Boston,MA
         )
     
     # ============================================================================
-    # 总结
+    # Summary
     # ============================================================================
     print()
     print_info("=" * 60)
-    print_info("所有端点测试完成！")
+    print_info("All endpoint tests completed!")
     print_info("=" * 60)
     print()
-    print_info("访问 http://localhost:8000/docs 查看完整的API文档")
+    print_info("Visit http://localhost:8000/docs to view full API documentation")
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n测试被用户中断")
+        print("\n\nTest interrupted by user")
     except Exception as e:
-        print_error(f"\n测试过程中发生错误: {str(e)}")
+        print_error(f"\nError occurred during testing: {str(e)}")
         import traceback
         traceback.print_exc()
 

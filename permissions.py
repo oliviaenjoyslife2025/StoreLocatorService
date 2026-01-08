@@ -95,6 +95,12 @@ def require_admin(current_user: User = Depends(get_current_user), db: Session = 
 def require_admin_or_marketer(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
     """Require admin or marketer role."""
     role = db.query(Role).filter(Role.role_id == current_user.role_id).first()
+    print(f"DEBUG: User {current_user.email} has role_id {current_user.role_id}")
+    if role:
+        print(f"DEBUG: Found role name: '{role.name}'")
+    else:
+        print(f"DEBUG: No role found for role_id {current_user.role_id}")
+        
     if not role or role.name not in ["admin", "marketer"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
