@@ -1,5 +1,12 @@
 import pytest
 import os
+
+# Set environment variables for testing BEFORE importing any app modules
+# This ensures that database.py uses the test database instead of the production one
+os.environ["DATABASE_URL"] = os.getenv("TEST_DATABASE_URL", "sqlite:///./test.db")
+os.environ["REDIS_HOST"] = "localhost" # Default to localhost for local testing
+os.environ["REDIS_PORT"] = "6379"
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
@@ -12,7 +19,7 @@ from database import get_db, get_redis_client
 from config import settings
 
 # Test database URL (use SQLite for testing)
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test.db")
+TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 
 # Create test engine
 test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
