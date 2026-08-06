@@ -1,4 +1,4 @@
-# Store Locator Service
+# Retail Store Locator API
 
 This is a backend project for managing and searching retail store locations. It features geocoding, distance-based searches, and comprehensive role-based access control.
 
