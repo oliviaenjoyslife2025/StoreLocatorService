@@ -96,6 +96,15 @@ def main():
             }
         }
     )
+
+    # Public store details
+    print()
+    print_info("Testing public store details...")
+    success, response = test_endpoint(
+        "GET /api/stores/{id} - Get public store details",
+        "GET",
+        f"{BASE_URL}/api/stores/S0001"
+    )
     
     # ============================================================================
     # 2. Authentication Endpoints

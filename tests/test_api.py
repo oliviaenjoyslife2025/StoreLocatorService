@@ -224,6 +224,115 @@ class TestSearchAPI:
         if len(data["data"]) > 0:
             assert data["data"][0]["store_type"] == "flagship"
 
+class TestPublicStoreDetailsAPI:
+    """API tests for public store details."""
+
+    def test_get_public_store_details(self, client, db_session):
+        """Test fetching an active store by ID without authentication."""
+        service = Service(service_id="SVC_pharmacy", name="pharmacy")
+        store = Store(
+            store_id="S0100",
+            name="Public Detail Store",
+            store_type=StoreType.regular,
+            status=StoreStatus.active,
+            latitude=42.3601,
+            longitude=-71.0589,
+            address_street="123 Main St",
+            address_city="Boston",
+            address_state="MA",
+            address_postal_code="02101",
+            address_country="USA",
+            phone="617-555-0100",
+            hours_mon="08:00-22:00",
+            hours_tue="08:00-22:00",
+            hours_wed="08:00-22:00",
+            hours_thu="08:00-22:00",
+            hours_fri="08:00-22:00",
+            hours_sat="09:00-21:00",
+            hours_sun="10:00-20:00"
+        )
+        store.services.append(service)
+        db_session.add(store)
+        db_session.commit()
+
+        response = client.get("/api/stores/S0100")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["store_id"] == "S0100"
+        assert data["name"] == "Public Detail Store"
+        assert data["phone"] == "617-555-0100"
+        assert "pharmacy" in data["services"]
+        assert "is_open_now" in data
+        assert isinstance(data["is_open_now"], bool)
+
+    def test_get_public_store_not_found(self, client, db_session):
+        """Test that a missing store returns 404."""
+        response = client.get("/api/stores/DOES_NOT_EXIST")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_public_store_hides_inactive(self, client, db_session):
+        """Test that deactivated stores are not exposed on the public endpoint."""
+        store = Store(
+            store_id="S0101",
+            name="Inactive Store",
+            store_type=StoreType.regular,
+            status=StoreStatus.inactive,
+            latitude=42.3601,
+            longitude=-71.0589,
+            address_street="123 Main St",
+            address_city="Boston",
+            address_state="MA",
+            address_postal_code="02101",
+            address_country="USA",
+            phone="617-555-0100",
+            hours_mon="closed",
+            hours_tue="closed",
+            hours_wed="closed",
+            hours_thu="closed",
+            hours_fri="closed",
+            hours_sat="closed",
+            hours_sun="closed"
+        )
+        db_session.add(store)
+        db_session.commit()
+
+        response = client.get("/api/stores/S0101")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_public_store_temporarily_closed(self, client, db_session):
+        """Test that temporarily closed stores are still visible publicly."""
+        store = Store(
+            store_id="S0102",
+            name="Temp Closed Store",
+            store_type=StoreType.regular,
+            status=StoreStatus.temporarily_closed,
+            latitude=42.3601,
+            longitude=-71.0589,
+            address_street="123 Main St",
+            address_city="Boston",
+            address_state="MA",
+            address_postal_code="02101",
+            address_country="USA",
+            phone="617-555-0100",
+            hours_mon="08:00-22:00",
+            hours_tue="08:00-22:00",
+            hours_wed="08:00-22:00",
+            hours_thu="08:00-22:00",
+            hours_fri="08:00-22:00",
+            hours_sat="09:00-21:00",
+            hours_sun="10:00-20:00"
+        )
+        db_session.add(store)
+        db_session.commit()
+
+        response = client.get("/api/stores/S0102")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["status"] == "temporarily_closed"
+        assert data["is_open_now"] is False
+
 class TestAuthenticationAPI:
     """API tests for authentication."""
     

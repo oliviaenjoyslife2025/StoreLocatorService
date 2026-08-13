@@ -21,6 +21,7 @@ This is a backend project for managing and searching retail store locations. It 
 
 ### Store Search (Public)
 - `POST /api/stores/search`: Find stores by coordinates, address, or postal code with filtering.
+- `GET /api/stores/{id}`: Fetch public details for a single store that is not deactivated.
 
 ### Authentication
 - `POST /api/auth/login`: Authenticate and receive access/refresh tokens.

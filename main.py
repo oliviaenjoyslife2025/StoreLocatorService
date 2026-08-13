@@ -219,6 +219,33 @@ async def search_stores(
     print(f"Search results cached for: {cache_key}")
     return response
 
+def _store_to_public_response(store: Store) -> StoreResponse:
+    """Convert a Store ORM object into a public StoreResponse."""
+    service_names = [s.name for s in store.services]
+    store_response_data = dict(store.__dict__)
+    store_response_data["services"] = service_names
+    return StoreResponse(
+        **store_response_data,
+        is_open_now=is_store_open(store),
+    )
+
+@app.get("/api/stores/{store_id}", response_model=StoreResponse, tags=["Store Search"], dependencies=[Depends(rate_limit)])
+async def get_public_store(
+    store_id: str,
+    db: Session = Depends(get_db),
+):
+    """Return public details for a single store that is not deactivated."""
+    store = db.query(Store).filter(
+        Store.store_id == store_id,
+        Store.status != StoreStatus.inactive,
+    ).first()
+    if not store:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Store with ID {store_id} not found"
+        )
+    return _store_to_public_response(store)
+
 # Authentication Endpoints
 @app.post("/api/auth/login", response_model=TokenResponse, tags=["Authentication"])
 async def login(
