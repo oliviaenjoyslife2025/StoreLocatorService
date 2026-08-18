@@ -10,6 +10,7 @@ This is a backend project for managing and searching retail store locations. It 
 - **Security:** PyJWT for authentication and Bcrypt for password hashing
 - **Geospatial:** Geopy for coordinate and distance calculations
 - **Testing:** Pytest and Httpx
+- **Logging:** Python logging with perrequest access logs
 
 ## API Endpoints
 <img width="1418" height="772" alt="image" src="https://github.com/user-attachments/assets/af94236d-cfb1-4cbc-b6aa-0df8fe874b0a" />
@@ -49,4 +50,5 @@ This is a backend project for managing and searching retail store locations. It 
 3. **Automatic Setup**: The application automatically handles database migrations and initializes a default admin account on startup.
 4. **Interactive Docs**: Access the full Swagger documentation at `http://localhost:8000/docs` once the service is active.
 5. **Local Development**: Alternatively, install dependencies via `pip install -r requirements.txt` and run `uvicorn main:app --reload`.
+6. **Access logs**: Access logs are written to stdout as `METHOD /path status duration ip=... user=...`. Set `LOG_LEVEL` in `.env` (default `INFO`).
 
