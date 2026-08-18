@@ -17,6 +17,7 @@ class Settings:
     RATE_LIMIT_PER_HOUR = int(os.getenv("RATE_LIMIT_PER_HOUR", "100"))
     RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "10"))
     REFRESH_TOKEN_EXPIRE_DAYS = 7
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 settings = Settings()
 

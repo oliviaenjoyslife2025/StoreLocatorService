@@ -6,15 +6,17 @@ import datetime
 
 from config import settings
 from database import get_redis_client
+from app_logging import get_logger
 
 geolocator = Nominatim(user_agent="store_locator_service")
+logger = get_logger()
 
 def get_coordinates_from_address(address: str, redis_client: redis.Redis):
     cache_key = f"geocoding:{address}"
     cached_result = redis_client.get(cache_key)
 
     if cached_result:
-        print(f"Cache hit for geocoding: {address}")
+        logger.debug("Geocoding cache hit for address")
         return json.loads(cached_result)
 
     try:
@@ -26,13 +28,13 @@ def get_coordinates_from_address(address: str, redis_client: redis.Redis):
             }
             # Cache for 30 days
             redis_client.setex(cache_key, datetime.timedelta(days=settings.GEOCODING_CACHE_TTL_DAYS), json.dumps(coordinates))
-            print(f"Geocoding successful and cached for: {address}")
+            logger.info("Geocoded address and cached result")
             return coordinates
         else:
-            print(f"Could not geocode address: {address}")
+            logger.warning("Could not geocode address")
             return None
-    except (GeocoderTimedOut, GeocoderServiceError) as e:
-        print(f"Geocoding error for {address}: {e}")
+    except (GeocoderTimedOut, GeocoderServiceError):
+        logger.warning("Geocoding error for address", exc_info=True)
         return None
 
 def get_coordinates_from_postal_code(postal_code: str, redis_client: redis.Redis):
@@ -40,7 +42,7 @@ def get_coordinates_from_postal_code(postal_code: str, redis_client: redis.Redis
     cached_result = redis_client.get(cache_key)
 
     if cached_result:
-        print(f"Cache hit for geocoding: {postal_code}")
+        logger.debug("Geocoding cache hit for postal code")
         return json.loads(cached_result)
 
     try:
@@ -52,12 +54,11 @@ def get_coordinates_from_postal_code(postal_code: str, redis_client: redis.Redis
             }
             # Cache for 30 days
             redis_client.setex(cache_key, datetime.timedelta(days=settings.GEOCODING_CACHE_TTL_DAYS), json.dumps(coordinates))
-            print(f"Geocoding successful and cached for: {postal_code}")
+            logger.info("Geocoded postal code and cached result")
             return coordinates
         else:
-            print(f"Could not geocode postal code: {postal_code}")
+            logger.warning("Could not geocode postal code")
             return None
-    except (GeocoderTimedOut, GeocoderServiceError) as e:
-        print(f"Geocoding error for {postal_code}: {e}")
+    except (GeocoderTimedOut, GeocoderServiceError):
+        logger.warning("Geocoding error for postal code", exc_info=True)
         return None
-

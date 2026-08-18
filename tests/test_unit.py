@@ -1,8 +1,15 @@
 import pytest
 from datetime import datetime
+from types import SimpleNamespace
 from distance_calculator import calculate_bounding_box, calculate_distance
-from auth import hash_password, verify_password
+from auth import hash_password, verify_password, create_access_token
 from csv_import import validate_hours, parse_services
+from app_logging import (
+    format_access_log,
+    should_skip_access_log,
+    user_id_from_request,
+    setup_logging,
+)
 
 class TestDistanceCalculation:
     """Unit tests for distance calculation functions."""
@@ -159,4 +166,37 @@ class TestServicesParsing:
         """Test parsing services with empty parts."""
         services = parse_services("pharmacy||pickup")
         assert services == ["pharmacy", "pickup"]
+
+
+class TestAccessLogging:
+    """Unit tests for request access logging helpers."""
+
+    def test_format_access_log(self):
+        message = format_access_log("GET", "/api/stores/S0100", 200, 12.34, "127.0.0.1", "anonymous")
+        assert message == "GET /api/stores/S0100 200 12.3ms ip=127.0.0.1 user=anonymous"
+
+    def test_skip_docs_paths(self):
+        assert should_skip_access_log("/docs") is True
+        assert should_skip_access_log("/openapi.json") is True
+        assert should_skip_access_log("/api/stores/S0100") is False
+
+    def test_user_id_anonymous_without_token(self):
+        request = SimpleNamespace(headers={})
+        assert user_id_from_request(request) == "anonymous"
+
+    def test_user_id_from_valid_token(self):
+        token = create_access_token({"user_id": "U001", "email": "admin@test.com", "role": "admin"})
+        request = SimpleNamespace(headers={"Authorization": f"Bearer {token}"})
+        assert user_id_from_request(request) == "U001"
+
+    def test_user_id_invalid_token(self):
+        request = SimpleNamespace(headers={"Authorization": "Bearer not-a-jwt"})
+        assert user_id_from_request(request) == "anonymous"
+
+    def test_setup_logging_is_idempotent(self):
+        first = setup_logging()
+        second = setup_logging()
+        assert first is second
+        assert len(first.handlers) == 1
+
 

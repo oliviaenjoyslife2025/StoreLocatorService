@@ -31,12 +31,16 @@ from permissions import require_admin, require_admin_or_marketer, require_viewer
 from csv_import import process_csv_import
 from init_db import init_roles_and_permissions, create_default_admin
 from database import SessionLocal
+from app_logging import setup_logging, log_requests, get_logger
+
+logger = setup_logging()
 
 app = FastAPI(
     title="Store Locator Service",
     description="API service for multi-location retail business",
     version="1.0.0",
 )
+app.middleware("http")(log_requests)
 
 @app.on_event("startup")
 def on_startup():
@@ -91,11 +95,10 @@ async def search_stores(
 ):
     # Generate a cache key based on the request (location and filters)
     cache_key = f"search:{request.model_dump_json()}"
-    print(f"Cache key: {cache_key}")
+    logger.debug("Search cache key generated")
     cached_response = redis_client.get(cache_key)
-    print(f"Cached response: {cached_response}")
     if cached_response:
-        print(f"Cache hit for search: {cache_key}")
+        logger.info("Search cache hit")
         return SearchResultsResponse.model_validate_json(cached_response)
 
     # Validate address zip code against postal_code if both provided
@@ -216,7 +219,7 @@ async def search_stores(
         datetime.timedelta(minutes=settings.SEARCH_RESULTS_CACHE_TTL_MINUTES),
         response.model_dump_json() # Use model_dump_json to serialize Pydantic model
     )
-    print(f"Search results cached for: {cache_key}")
+    logger.info("Search results cached")
     return response
 
 def _store_to_public_response(store: Store) -> StoreResponse:
@@ -331,9 +334,9 @@ async def refresh_token(
                         ttl,
                         "true"
                     )
-                    print(f"DEBUG: Blacklisted old access token. Key: blacklist:{old_access_token[:20]}... TTL: {ttl}s")
-        except Exception as e:
-            print(f"DEBUG: Failed to blacklist old token: {e}")
+                    logger.debug("Blacklisted old access token ttl=%ss", ttl)
+        except Exception:
+            logger.warning("Failed to blacklist old access token", exc_info=True)
             pass
 
     # 2. Proceed with Refresh Token validation
@@ -405,9 +408,9 @@ async def logout(
                 ttl,
                 "true"
             )
-            print(f"DEBUG: Logout - Blacklisted access token. TTL: {ttl}s")
-    except Exception as e:
-        print(f"DEBUG: Logout - Blacklisting failed: {e}")
+            logger.debug("Logout blacklisted access token ttl=%ss", ttl)
+    except Exception:
+        logger.warning("Logout failed to blacklist access token", exc_info=True)
         pass
 
     # 2. Revoke Refresh Token
@@ -646,8 +649,7 @@ async def import_stores_csv(
     redis_client: redis.Redis = Depends(get_redis_client)
 ):
     """Import stores from CSV file."""
-    print(f"DEBUG: Headers received: {dict(request.headers)}")
-    print(f"DEBUG: Receiving file upload. Filename: '{file.filename}', Content-Type: '{file.content_type}'")
+    logger.info("Receiving CSV import filename=%s content_type=%s", file.filename, file.content_type)
     
     content = await file.read()
     if not content:

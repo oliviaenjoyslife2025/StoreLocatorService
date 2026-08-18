@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from models import User, Role, Permission
 from database import get_db
+from app_logging import get_logger
+
+logger = get_logger()
 
 # Permission definitions
 PERMISSIONS = {
@@ -95,12 +98,7 @@ def require_admin(current_user: User = Depends(get_current_user), db: Session = 
 def require_admin_or_marketer(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
     """Require admin or marketer role."""
     role = db.query(Role).filter(Role.role_id == current_user.role_id).first()
-    print(f"DEBUG: User {current_user.email} has role_id {current_user.role_id}")
-    if role:
-        print(f"DEBUG: Found role name: '{role.name}'")
-    else:
-        print(f"DEBUG: No role found for role_id {current_user.role_id}")
-        
+    logger.debug("Role check user=%s role_id=%s role=%s", current_user.email, current_user.role_id, role.name if role else None)
     if not role or role.name not in ["admin", "marketer"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
